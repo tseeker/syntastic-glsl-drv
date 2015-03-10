@@ -61,6 +61,9 @@ call g:SyntasticRegistry.CreateAndRegisterChecker({
     \'name': 'driver',
     \'exec': 'check-glsl'})
 
+let s:ownpath = expand( '<sfile>:p:h:h:h' )
+let g:syntastic_glsl_driver_exec = s:ownpath . '/check-glsl'
+
 let &cpo = s:save_cpo
 unlet s:save_cpo
 
