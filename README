@@ -1,5 +1,31 @@
 Quick and dirty, Linux-only GLSL syntax checker for Syntastic [1]. It uses
-the local GL driver to check errors in shaders. Requires OpenGL 4.1, because
-it uses glCreateShaderProgramv.
+the local GL driver to check for errors in shaders. It requires OpenGL 4.1
+because it uses glCreateShaderProgramv.
+
+A shader's source file must contain a line that reads:
+
+// type: X
+
+where X is one of the following:
+
+	v	Vertex shader
+	f	Fragment shader
+	g	Geometry shader
+	tc	Tessellation control shader
+	te	Tessellation evaluation shader
+	c	Compute shader
+
+Also, you probably need to add
+	let g:syntastic_glsl_checkers = [ 'driver' ]
+somewhere in your Vim configuration.
+
+For NeoBundle, this should work:
+	
+	NeoBundle 'tseeker/syntastic-glsl-drv' , {
+		\ 'build' : {
+		\     'linux' : 'make'
+		\    },
+		\ }
+
 
 [1] https://github.com/scrooloose/syntastic
