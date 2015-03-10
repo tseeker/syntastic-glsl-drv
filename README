@@ -1,0 +1,5 @@
+Quick and dirty, Linux-only GLSL syntax checker for Syntastic [1]. It uses
+the local GL driver to check errors in shaders. Requires OpenGL 4.1, because
+it uses glCreateShaderProgramv.
+
+[1] https://github.com/scrooloose/syntastic
