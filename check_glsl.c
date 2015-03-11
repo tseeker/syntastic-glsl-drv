@@ -44,15 +44,6 @@ static PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
 static PFNGLDELETEPROGRAMPROC glDeleteProgram;
 
 
-static void debugCallback( GLenum source , GLenum type , GLuint id ,
-		GLenum severity , GLsizei length , GLchar const* message ,
-		void const* userParam )
-{
-	fprintf( stderr , "%x %x %x %x %s\n" , source , type , id , severity ,
-			message );
-}
-
-
 static int initContext( )
 {
 	PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribs;
