@@ -3,20 +3,10 @@ if exists("g:loaded_syntastic_glsl_driver_checker")
 endif
 let g:loaded_syntastic_glsl_driver_checker = 1
 
-let s:glsl_extensions = {
-        \ 'glslf': 'f',
-        \ 'glslv': 'v',
-        \ 'frag':  'f',
-        \ 'vert':  'v',
-        \ 'geom':  'g',
-        \ 'fp':    'f',
-        \ 'vp':    'v'
-    \ }
-
 let s:save_cpo = &cpo
 set cpo&vim
 
-function! SyntaxCheckers_glsl_driver_GetLocList() dict " {{{1
+function! SyntaxCheckers_glsl_driver_GetLocList() dict
     let makeprg = self.makeprgBuild({
         \ 'args_before': s:GetShaderType() })
 
@@ -29,9 +19,9 @@ function! SyntaxCheckers_glsl_driver_GetLocList() dict " {{{1
     return SyntasticMake({
         \ 'makeprg': makeprg,
         \ 'errorformat': errorformat })
-endfunction " }}}1
+endfunction
 
-function! s:GetShaderType() " {{{2
+function! s:GetShaderType()
     let save_view = winsaveview()
     let old_foldenable = &foldenable
     let old_lazyredraw = &lazyredraw
@@ -40,21 +30,30 @@ function! s:GetShaderType() " {{{2
     let &foldenable = 0
     call cursor(1, 1)
 
-    let magic = '\m\C^// type:\s*'
-    let line = search(magic, 'c')
+    let type_magic = '\m\C^// type:\s*'
+    let sep_magic = '\m\C^// separable:\s*'
+    let type_line = search(type_magic, 'c')
+    let sep_line = search(sep_magic, 'c')
 
     call winrestview(save_view)
     let &foldenable = old_foldenable
     let &lazyredraw = old_lazyredraw
 
-    if line
-        let profile = matchstr(getline(line), magic . '\zs.*')
+    if type_line
+        let profile = matchstr(getline(type_line), type_magic . '\zs.*')
     else
-        let profile = get(s:extensions, tolower(expand('%:e', 1)), 'v')
+        let profile = 'v'
     endif
 
-    return profile
-endfunction " }}}2
+    if sep_line
+	let separable = matchstr( getline( sep_line ) , sep_magic . '\zs.*' )
+    else
+	let separable = 'no'
+    endif
+    let separable = ( separable ==? 'yes' ) ? '/ ' : ''
+
+    return separable . profile
+endfunction
 
 call g:SyntasticRegistry.CreateAndRegisterChecker({
     \'filetype': 'glsl',
