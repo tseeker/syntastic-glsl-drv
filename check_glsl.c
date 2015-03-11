@@ -11,8 +11,10 @@ static int vAttributes[] = {
 };
 
 static int cAttributes[] = {
-	GLX_CONTEXT_MAJOR_VERSION_ARB , 4 ,
-	GLX_CONTEXT_MINOR_VERSION_ARB , 1 ,
+	GLX_CONTEXT_MAJOR_VERSION_ARB , 3 ,
+	GLX_CONTEXT_MINOR_VERSION_ARB , 0 ,
+	GLX_CONTEXT_FLAGS_ARB ,
+		GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB ,
 	GLX_CONTEXT_PROFILE_MASK_ARB ,
 		GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB ,
 	0
@@ -39,9 +41,16 @@ static int errmsg( char const* msg )
 static Display * xDisplay;
 static GLXContext glxContext;
 static GLXPbuffer pBuffer;
+
+static PFNGLCREATESHADERPROC glCreateShader;
 static PFNGLCREATESHADERPROGRAMVPROC glCreateShaderProgramv;
+static PFNGLSHADERSOURCEPROC glShaderSource;
+static PFNGLCOMPILESHADERPROC glCompileShader;
 static PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
+static PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog;
+static PFNGLGETSHADERIVPROC glGetShaderiv;
 static PFNGLDELETEPROGRAMPROC glDeleteProgram;
+static PFNGLDELETESHADERPROC glDeleteShader;
 
 
 static int initContext( )
@@ -82,11 +91,18 @@ static int initContext( )
 		return errmsg( "Could not activate context" );
 	}
 
+	glCreateShader = gglp( PFNGLCREATESHADERPROC , "CreateShader" );
 	glCreateShaderProgramv = gglp( PFNGLCREATESHADERPROGRAMVPROC ,
 			"CreateShaderProgramv" );
+	glShaderSource = gglp( PFNGLSHADERSOURCEPROC , "ShaderSource" );
+	glCompileShader = gglp( PFNGLCOMPILESHADERPROC , "CompileShader" );
 	glGetProgramInfoLog = gglp( PFNGLGETPROGRAMINFOLOGPROC ,
 			"GetProgramInfoLog" );
+	glGetShaderInfoLog = gglp( PFNGLGETSHADERINFOLOGPROC ,
+			"GetShaderInfoLog" );
+	glGetShaderiv = gglp( PFNGLGETSHADERIVPROC , "GetShaderiv" );
 	glDeleteProgram = gglp( PFNGLDELETEPROGRAMPROC , "DeleteProgram" );
+	glDeleteShader = gglp( PFNGLDELETESHADERPROC , "DeleteShader" );
 
 	return 1;
 }
@@ -153,7 +169,7 @@ static char * loadFile( char const* name )
 }
 
 
-void loadShader( GLenum type , char const* file )
+static void loadShaderSeparable( GLenum type , char const* file )
 {
 	GLuint program;
 	char * source = loadFile( file );
@@ -167,6 +183,7 @@ void loadShader( GLenum type , char const* file )
 	char infoLog[ 128 * 1024 ];
 	int sz , i , j;
 	glGetProgramInfoLog( program , sizeof( infoLog ) , &sz , infoLog );
+	glDeleteProgram( program );
 
 	i = 0;
 	while ( i < sz ) {
@@ -180,8 +197,43 @@ void loadShader( GLenum type , char const* file )
 		fprintf( stderr , "%s: %s\n" , file , &infoLog[ i ] );
 		i = j + 1;
 	}
+}
 
-	glDeleteProgram( program );
+
+static void loadShader( GLenum type , char const* file )
+{
+	GLenum shader;
+	shader = glCreateShader( type );
+
+	char * source = loadFile( file );
+	if ( source == NULL ) {
+		return;
+	}
+	glShaderSource( shader , 1 , (GLchar const**) &source , NULL );
+	free( source );
+
+	glCompileShader( shader );
+
+	GLint status;
+	glGetShaderiv( shader , GL_COMPILE_STATUS , &status );
+
+	char infoLog[ 128 * 1024 ];
+	int sz , i , j;
+	glGetShaderInfoLog( shader , sizeof( infoLog ) , &sz , infoLog );
+	glDeleteShader( shader );
+
+	i = 0;
+	while ( i < sz ) {
+		j = i;
+		while ( j < sz && infoLog[ j ] != '\n' ) {
+			j ++;
+		}
+		if ( j < sz ) {
+			infoLog[ j ] = 0;
+		}
+		fprintf( stderr , "%s: %s\n" , file , &infoLog[ i ] );
+		i = j + 1;
+	}
 }
 
 
@@ -194,19 +246,29 @@ int main( int argc , char ** argv )
 	if ( argc > 1 ) {
 		if ( argc < 3 ) {
 			fprintf( stderr ,
-					"Syntax: %s [v|f|g|tc|te|c] file...\n" ,
-					argv[ 0 ] );
+				"Syntax: %s [/] v|f|g|tc|te|c file...\n" ,
+				argv[ 0 ] );
 			return 1;
 		}
 
-		GLenum type = getShaderType( argv[ 1 ] );
+		int argPos = 1 , separable = 0;
+		if ( argc > 3 && !strcmp( "/" , argv[ 1 ] ) ) {
+			separable = 1;
+			argPos ++;
+		}
+
+		GLenum type = getShaderType( argv[ argPos ] );
 		if ( type == 0 ) {
 			return 1;
 		}
 
 		int i;
-		for ( i = 2 ; i < argc ; i ++ ) {
-			loadShader( type , argv[ i ] );
+		for ( i = argPos + 1 ; i < argc ; i ++ ) {
+			if ( separable ) {
+				loadShaderSeparable( type , argv[ i ] );
+			} else {
+				loadShader( type , argv[ i ] );
+			}
 		}
 	}
 
